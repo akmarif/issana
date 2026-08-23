@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portfolio</title>
 <link rel="stylesheet" href="styles.css">
@@ -15,12 +16,15 @@
 
     <main class="viewer">
       <header class="topbar">
-        <button id="toggleSidebar" class="icon-btn" title="Toggle slide list">☰</button>
+        <button id="toggleSidebar" class="icon-btn" title="Toggle slide list">&#9776;</button>
         <div class="counter"><span id="currentIndex">1</span> / <span id="totalCount">1</span></div>
         <div class="spacer"></div>
-        <button id="prevBtn" class="icon-btn" title="Previous (←)">‹</button>
-        <button id="nextBtn" class="icon-btn" title="Next (→)">›</button>
-        <button id="fullscreenBtn" class="icon-btn" title="Fullscreen">⛶</button>
+        <button id="prevBtn" class="icon-btn" title="Previous (Left arrow key)">&#8249;</button>
+        <button id="nextBtn" class="icon-btn" title="Next (Right arrow key)">&#8250;</button>
+        <button id="fullscreenBtn" class="icon-btn" title="Fullscreen">
+          <svg id="fsIconExpand" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          <svg id="fsIconCollapse" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
+        </button>
       </header>
 
       <div class="stage" id="stage">
@@ -28,6 +32,13 @@
       </div>
     </main>
   </div>
+
+  <noscript>
+    <style>.app { display: none; }</style>
+    <p style="font-family:sans-serif;text-align:center;margin-top:40px;color:#ccc">
+      Please enable JavaScript to view this portfolio.
+    </p>
+  </noscript>
 
 <script src="script.js"></script>
 </body>
