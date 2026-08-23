@@ -1,295 +1,297 @@
 (function () {
-  var TOTAL_SLIDES = 41;
+  var TOTAL   = 41;
+  var ANIM_MS = 650; // must match --anim-dur in CSS
+
   var slides = [];
-  for (var i = 0; i < TOTAL_SLIDES; i++) {
-    var num = i + 1;
-    var padded = num < 10 ? '0' + num : '' + num;
-    slides.push('slides/slide-' + padded + '.jpg');
+  for (var i = 0; i < TOTAL; i++) {
+    var n = i + 1;
+    slides.push('slides/slide-' + (n < 10 ? '0' + n : '' + n) + '.jpg');
   }
 
-  var currentIndex = 0;
+  var current     = 0;
+  var isAnimating = false;
 
-  var slideImage       = document.getElementById('slideImage');
-  var currentIndexEl   = document.getElementById('currentIndex');
-  var totalCountEl     = document.getElementById('totalCount');
-  var thumbList        = document.getElementById('thumbList');
-  var prevBtn          = document.getElementById('prevBtn');
-  var nextBtn          = document.getElementById('nextBtn');
-  var stagePrevBtn     = document.getElementById('stagePrevBtn');
-  var stageNextBtn     = document.getElementById('stageNextBtn');
-  var fullscreenBtn    = document.getElementById('fullscreenBtn');
-  var toggleSidebarBtn = document.getElementById('toggleSidebar');
-  var closeSidebarBtn  = document.getElementById('closeSidebar');
-  var sidebar          = document.getElementById('sidebar');
-  var backdrop         = document.getElementById('sidebarBackdrop');
-  var fsIconExpand     = document.getElementById('fsIconExpand');
-  var fsIconCollapse   = document.getElementById('fsIconCollapse');
+  // ── DOM refs ──────────────────────────────────────────────
+  var frontLayer   = document.getElementById('frontLayer');
+  var backLayer    = document.getElementById('backLayer');
+  var frontImage   = document.getElementById('frontImage');
+  var backImage    = document.getElementById('backImage');
+  var prevBtn      = document.getElementById('prevBtn');
+  var nextBtn      = document.getElementById('nextBtn');
+  var currentNumEl = document.getElementById('currentNum');
+  var totalNumEl   = document.getElementById('totalNum');
+  var progressFill = document.getElementById('progressFill');
+  var fullscreenBtn   = document.getElementById('fullscreenBtn');
+  var fsIconExpand    = document.getElementById('fsIconExpand');
+  var fsIconCollapse  = document.getElementById('fsIconCollapse');
+  var thumbToggle     = document.getElementById('thumbToggle');
+  var thumbClose      = document.getElementById('thumbClose');
+  var thumbPanel      = document.getElementById('thumbPanel');
+  var thumbGrid       = document.getElementById('thumbGrid');
+  var panelBackdrop   = document.getElementById('panelBackdrop');
 
-  totalCountEl.textContent = TOTAL_SLIDES;
+  totalNumEl.textContent = TOTAL;
 
-  // ── Passive event listener feature detection ─────────────
+  // ── Passive listener detection ────────────────────────────
   var supportsPassive = false;
   try {
-    var opts = Object.defineProperty({}, 'passive', {
-      get: function () { supportsPassive = true; }
-    });
-    window.addEventListener('testPassive', null, opts);
-    window.removeEventListener('testPassive', null, opts);
+    var o = Object.defineProperty({}, 'passive', { get: function () { supportsPassive = true; } });
+    window.addEventListener('_t', null, o);
+    window.removeEventListener('_t', null, o);
   } catch (e) {}
-  var passiveOpt = supportsPassive ? { passive: true } : false;
+  var passOpt = supportsPassive ? { passive: true } : false;
 
-  // ── classList helpers (IE11 toggle-force not supported) ──
-  function addClass(el, cls) {
-    if (el.classList) { el.classList.add(cls); }
-    else { el.className += ' ' + cls; }
-  }
-  function removeClass(el, cls) {
-    if (el.classList) { el.classList.remove(cls); }
-    else { el.className = el.className.replace(new RegExp('(^|\\s)' + cls + '(\\s|$)', 'g'), ' '); }
-  }
-  function hasClass(el, cls) {
-    if (el.classList) return el.classList.contains(cls);
-    return (' ' + el.className + ' ').indexOf(' ' + cls + ' ') > -1;
-  }
-  function toggleClass(el, cls) {
-    if (hasClass(el, cls)) { removeClass(el, cls); } else { addClass(el, cls); }
+  // ── classList helpers ─────────────────────────────────────
+  function add(el, c)    { if (el.classList) { el.classList.add(c); } else { el.className += ' ' + c; } }
+  function rem(el, c)    { if (el.classList) { el.classList.remove(c); } else { el.className = el.className.replace(new RegExp('(^|\\s)' + c + '(\\s|$)', 'g'), ' '); } }
+  function has(el, c)    { if (el.classList) return el.classList.contains(c); return (' ' + el.className + ' ').indexOf(' ' + c + ' ') > -1; }
+
+  // ── Preloading ────────────────────────────────────────────
+  var preloaded = {};
+  function preload(idx) {
+    if (idx < 0 || idx >= TOTAL || preloaded[idx]) return;
+    preloaded[idx] = true;
+    var img = new Image();
+    img.src = slides[idx];
   }
 
-  // ── Sidebar open/close ────────────────────────────────────
-  function isDesktop() {
-    return window.innerWidth >= 1100;
-  }
+  // ── Update HUD ────────────────────────────────────────────
+  function updateHUD() {
+    currentNumEl.textContent = current + 1;
+    progressFill.style.width = (current / (TOTAL - 1) * 100) + '%';
 
-  function openSidebar() {
-    removeClass(sidebar, 'collapsed');
-    if (!isDesktop()) {
-      addClass(backdrop, 'visible');
+    if (prevBtn.disabled !== undefined) {
+      prevBtn.disabled = (current === 0);
+      nextBtn.disabled = (current === TOTAL - 1);
+    } else {
+      prevBtn.style.opacity = current === 0          ? '0.15' : '';
+      nextBtn.style.opacity = current === TOTAL - 1  ? '0.15' : '';
     }
+
+    // Sync active thumbnail
+    var cells = thumbGrid.querySelectorAll('.thumb-cell');
+    for (var k = 0; k < cells.length; k++) {
+      var cell = cells[k];
+      var ci = parseInt(cell.getAttribute('data-idx'), 10);
+      if (ci === current) { add(cell, 'active'); cell.setAttribute('aria-current', 'true'); }
+      else                { rem(cell, 'active'); cell.removeAttribute('aria-current'); }
+    }
+
+    preload(current + 1);
+    preload(current + 2);
+    preload(current - 1);
   }
 
-  function closeSidebar() {
-    addClass(sidebar, 'collapsed');
-    removeClass(backdrop, 'visible');
+  // ── Page-flip navigation ──────────────────────────────────
+  function navigate(dir) {
+    if (isAnimating) return;
+    var next = current + dir;
+    if (next < 0 || next >= TOTAL) return;
+
+    isAnimating = true;
+    wakeUI();
+
+    // Load destination onto back layer
+    backImage.src = slides[next];
+    backImage.alt = 'Slide ' + (next + 1);
+
+    var flipCls   = dir > 0 ? 'flip-fwd'    : 'flip-bwd';
+    var revealCls = dir > 0 ? 'reveal-fwd'  : 'reveal-bwd';
+
+    // Trigger both animations simultaneously
+    add(frontLayer, flipCls);
+    add(backLayer,  revealCls);
+
+    setTimeout(function () {
+      current = next;
+
+      // Snap front layer to new slide (it's invisible at 180° so no flash)
+      frontImage.src = slides[current];
+      frontImage.alt = 'Slide ' + (current + 1);
+
+      // Remove animation classes — front layer returns to 0° instantly
+      rem(frontLayer, flipCls);
+      rem(backLayer,  revealCls);
+
+      isAnimating = false;
+      updateHUD();
+    }, ANIM_MS);
   }
 
-  function isSidebarOpen() {
-    return !hasClass(sidebar, 'collapsed');
+  // Direct jump (thumbnail click, Home/End) — no animation
+  function jumpTo(idx) {
+    if (idx < 0 || idx >= TOTAL || idx === current) return;
+    isAnimating = false;
+    current = idx;
+    frontImage.src = slides[current];
+    frontImage.alt = 'Slide ' + (current + 1);
+    backImage.src  = slides[current];
+    updateHUD();
   }
 
-  toggleSidebarBtn.addEventListener('click', function () {
-    if (isSidebarOpen()) { closeSidebar(); } else { openSidebar(); }
-  });
+  prevBtn.addEventListener('click', function () { navigate(-1); });
+  nextBtn.addEventListener('click', function () { navigate(1); });
 
-  if (closeSidebarBtn) {
-    closeSidebarBtn.addEventListener('click', closeSidebar);
+  // ── Fullscreen ────────────────────────────────────────────
+  function getFS() { return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null; }
+  function reqFS(el) {
+    if (el.requestFullscreen)          { el.requestFullscreen(); }
+    else if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); }
+    else if (el.mozRequestFullScreen)    { el.mozRequestFullScreen(); }
+    else if (el.msRequestFullscreen)     { el.msRequestFullscreen(); }
   }
+  function exitFS() {
+    if (document.exitFullscreen)           { document.exitFullscreen(); }
+    else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+    else if (document.mozCancelFullScreen)  { document.mozCancelFullScreen(); }
+    else if (document.msExitFullscreen)     { document.msExitFullscreen(); }
+  }
+  function syncFSIcon() {
+    var fs = !!getFS();
+    if (fsIconExpand)   { fsIconExpand.style.display   = fs ? 'none'         : 'inline-block'; }
+    if (fsIconCollapse) { fsIconCollapse.style.display = fs ? 'inline-block' : 'none'; }
+  }
+  fullscreenBtn.addEventListener('click', function () { if (!getFS()) { reqFS(document.documentElement); } else { exitFS(); } });
+  document.addEventListener('fullscreenchange',       syncFSIcon);
+  document.addEventListener('webkitfullscreenchange', syncFSIcon);
+  document.addEventListener('mozfullscreenchange',    syncFSIcon);
+  document.addEventListener('MSFullscreenChange',     syncFSIcon);
 
-  backdrop.addEventListener('click', closeSidebar);
-
-  // ── Thumbnail rendering ───────────────────────────────────
-  function renderThumbs() {
-    thumbList.innerHTML = '';
-    for (var j = 0; j < slides.length; j++) {
+  // ── Thumbnail panel ───────────────────────────────────────
+  function buildThumbs() {
+    for (var j = 0; j < TOTAL; j++) {
       (function (idx) {
-        var item = document.createElement('div');
-        item.className = 'thumb-item';
-        item.setAttribute('data-index', idx);
-        item.setAttribute('role', 'button');
-        item.setAttribute('tabindex', '0');
-        item.setAttribute('aria-label', 'Go to slide ' + (idx + 1));
-
-        var numSpan = document.createElement('span');
-        numSpan.className = 'thumb-num';
-        numSpan.textContent = idx + 1;
+        var cell = document.createElement('div');
+        cell.className = 'thumb-cell';
+        cell.setAttribute('data-idx', idx);
+        cell.setAttribute('role', 'button');
+        cell.setAttribute('tabindex', '0');
+        cell.setAttribute('aria-label', 'Slide ' + (idx + 1));
 
         var img = document.createElement('img');
+        img.src = slides[idx];
         img.alt = 'Slide ' + (idx + 1);
         img.setAttribute('loading', 'lazy');
-        img.src = slides[idx];
 
-        item.appendChild(numSpan);
-        item.appendChild(img);
+        var badge = document.createElement('span');
+        badge.className = 'thumb-badge';
+        badge.textContent = idx + 1;
 
-        item.addEventListener('click', function () {
-          goTo(idx);
-          // Auto-close sidebar on mobile after selection
-          if (!isDesktop()) { closeSidebar(); }
+        cell.appendChild(img);
+        cell.appendChild(badge);
+
+        function go() {
+          jumpTo(idx);
+          closePanel();
+        }
+        cell.addEventListener('click', go);
+        cell.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.keyCode === 13 || e.key === ' ' || e.keyCode === 32) { go(); }
         });
-        // Keyboard activation for accessibility
-        item.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter' || e.keyCode === 13 || e.key === ' ' || e.keyCode === 32) {
-            goTo(idx);
-            if (!isDesktop()) { closeSidebar(); }
-          }
-        });
 
-        thumbList.appendChild(item);
+        thumbGrid.appendChild(cell);
       })(j);
     }
   }
 
-  // ── scrollIntoView with options fallback ─────────────────
-  function scrollThumbIntoView(el) {
-    if (!el) return;
-    try {
-      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    } catch (e) {
-      try { el.scrollIntoView(false); } catch (e2) {}
-    }
-  }
-
-  // ── Navigation ────────────────────────────────────────────
-  function goTo(index) {
-    if (index < 0 || index >= TOTAL_SLIDES) return;
-    currentIndex = index;
-    slideImage.src = slides[currentIndex];
-    slideImage.alt = 'Slide ' + (currentIndex + 1);
-    currentIndexEl.textContent = currentIndex + 1;
-
-    var items = thumbList.querySelectorAll('.thumb-item');
-    var activeThumb = null;
-    for (var k = 0; k < items.length; k++) {
-      var el = items[k];
-      var elIdx = parseInt(el.getAttribute('data-index'), 10);
-      if (elIdx === currentIndex) {
-        addClass(el, 'active');
-        el.setAttribute('aria-current', 'true');
-        activeThumb = el;
-      } else {
-        removeClass(el, 'active');
-        el.removeAttribute('aria-current');
+  function openPanel() {
+    add(thumbPanel,    'open');
+    add(panelBackdrop, 'visible');
+    thumbPanel.setAttribute('aria-hidden', 'false');
+    clearTimeout(hideTimer); // keep UI visible while panel is open
+    rem(document.body, 'ui-hidden');
+    // Scroll active cell into view
+    setTimeout(function () {
+      var activeCell = thumbGrid.querySelector('.thumb-cell.active');
+      if (activeCell) {
+        try { activeCell.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        catch (e) { try { activeCell.scrollIntoView(); } catch (e2) {} }
       }
-    }
-    scrollThumbIntoView(activeThumb);
+    }, 60);
   }
 
-  function next() { goTo(currentIndex + 1); }
-  function prev() { goTo(currentIndex - 1); }
+  function closePanel() {
+    rem(thumbPanel,    'open');
+    rem(panelBackdrop, 'visible');
+    thumbPanel.setAttribute('aria-hidden', 'true');
+    wakeUI(); // restart auto-hide timer
+  }
 
-  prevBtn.addEventListener('click', prev);
-  nextBtn.addEventListener('click', next);
-  if (stagePrevBtn) { stagePrevBtn.addEventListener('click', prev); }
-  if (stageNextBtn) { stageNextBtn.addEventListener('click', next); }
+  thumbToggle.addEventListener('click', function () { if (has(thumbPanel, 'open')) { closePanel(); } else { openPanel(); } });
+  thumbClose.addEventListener('click', closePanel);
+  panelBackdrop.addEventListener('click', closePanel);
 
-  // ── Fullscreen API (vendor prefix fallback) ───────────────
-  function getFullscreenElement() {
-    return document.fullscreenElement
-      || document.webkitFullscreenElement
-      || document.mozFullScreenElement
-      || document.msFullscreenElement
-      || null;
-  }
-  function requestFullscreen(el) {
-    if (el.requestFullscreen)       return el.requestFullscreen();
-    if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
-    if (el.mozRequestFullScreen)    return el.mozRequestFullScreen();
-    if (el.msRequestFullscreen)     return el.msRequestFullscreen();
-  }
-  function exitFullscreen() {
-    if (document.exitFullscreen)        return document.exitFullscreen();
-    if (document.webkitExitFullscreen)  return document.webkitExitFullscreen();
-    if (document.mozCancelFullScreen)   return document.mozCancelFullScreen();
-    if (document.msExitFullscreen)      return document.msExitFullscreen();
-  }
-  function updateFullscreenIcon() {
-    var isFs = !!getFullscreenElement();
-    if (fsIconExpand)   fsIconExpand.style.display   = isFs ? 'none'         : 'inline-block';
-    if (fsIconCollapse) fsIconCollapse.style.display = isFs ? 'inline-block' : 'none';
-  }
-  fullscreenBtn.addEventListener('click', function () {
-    if (!getFullscreenElement()) {
-      var result = requestFullscreen(document.documentElement);
-      if (result && result.catch) { result.catch(function () {}); }
-    } else {
-      exitFullscreen();
-    }
-  });
-  document.addEventListener('fullscreenchange',       updateFullscreenIcon);
-  document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
-  document.addEventListener('mozfullscreenchange',    updateFullscreenIcon);
-  document.addEventListener('MSFullscreenChange',     updateFullscreenIcon);
-
-  // ── Keyboard navigation (e.key + keyCode fallback) ────────
+  // ── Keyboard ──────────────────────────────────────────────
   document.addEventListener('keydown', function (e) {
     var key  = e.key;
     var code = e.keyCode || e.which;
-    // Don't interfere when sidebar thumb list is focused
-    if (document.activeElement && hasClass(document.activeElement, 'thumb-item')) return;
 
-    if (key === 'ArrowRight' || key === 'PageDown' || key === ' ' ||
-        code === 39 || code === 34 || code === 32) {
+    if (has(thumbPanel, 'open')) {
+      if (key === 'Escape' || code === 27) { closePanel(); }
+      return;
+    }
+
+    if (key === 'ArrowRight' || key === 'PageDown' || key === ' ' || code === 39 || code === 34 || code === 32) {
       if (e.preventDefault) { e.preventDefault(); }
-      next();
-    } else if (key === 'ArrowLeft' || key === 'PageUp' ||
-               code === 37 || code === 33) {
+      navigate(1);
+    } else if (key === 'ArrowLeft' || key === 'PageUp' || code === 37 || code === 33) {
       if (e.preventDefault) { e.preventDefault(); }
-      prev();
+      navigate(-1);
     } else if (key === 'Home' || code === 36) {
-      goTo(0);
+      jumpTo(0);
     } else if (key === 'End' || code === 35) {
-      goTo(TOTAL_SLIDES - 1);
-    } else if (key === 'Escape' || code === 27) {
-      if (isSidebarOpen() && !isDesktop()) { closeSidebar(); }
+      jumpTo(TOTAL - 1);
     }
   });
 
-  // ── Touch / swipe (track Y delta to avoid scroll conflict) ─
-  var touchStartX = null;
-  var touchStartY = null;
-  var stage = document.getElementById('stage');
+  // ── Swipe (tracks Y to avoid scroll conflicts) ────────────
+  var tx = null, ty = null;
+  var bookStage = document.getElementById('bookStage');
 
-  stage.addEventListener('touchstart', function (e) {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, passiveOpt);
+  bookStage.addEventListener('touchstart', function (e) {
+    tx = e.touches[0].clientX;
+    ty = e.touches[0].clientY;
+  }, passOpt);
 
-  stage.addEventListener('touchend', function (e) {
-    if (touchStartX === null) return;
-    var dx = e.changedTouches[0].clientX - touchStartX;
-    var dy = e.changedTouches[0].clientY - touchStartY;
-    // Only trigger if horizontal movement dominates and is large enough
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0) { next(); } else { prev(); }
+  bookStage.addEventListener('touchend', function (e) {
+    if (tx === null) return;
+    var dx = e.changedTouches[0].clientX - tx;
+    var dy = e.changedTouches[0].clientY - ty;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) { navigate(1); } else { navigate(-1); }
     }
-    touchStartX = null;
-    touchStartY = null;
-  }, passiveOpt);
+    tx = null; ty = null;
+  }, passOpt);
 
-  // ── Responsive: handle sidebar state on resize/orientation ─
-  function onResize() {
-    if (isDesktop()) {
-      // Open sidebar on desktop; remove backdrop
-      openSidebar();
-      removeClass(backdrop, 'visible');
-    } else {
-      // Collapse sidebar on small screens unless user explicitly opened it
-      // We only auto-close; if user reopened we respect that.
+  // ── Auto-hide UI ──────────────────────────────────────────
+  var hideTimer = null;
+  var HIDE_AFTER = 3500;
+
+  function wakeUI() {
+    rem(document.body, 'ui-hidden');
+    clearTimeout(hideTimer);
+    if (!has(thumbPanel, 'open')) {
+      hideTimer = setTimeout(function () {
+        add(document.body, 'ui-hidden');
+      }, HIDE_AFTER);
     }
   }
 
-  // Debounce resize handler
-  var resizeTimer = null;
-  window.addEventListener('resize', function () {
-    if (resizeTimer) { clearTimeout(resizeTimer); }
-    resizeTimer = setTimeout(onResize, 150);
-  });
-
-  // orientationchange fires before resize on some browsers
-  if ('onorientationchange' in window) {
-    window.addEventListener('orientationchange', function () {
-      setTimeout(onResize, 300);
-    });
-  }
+  document.addEventListener('mousemove', wakeUI);
+  document.addEventListener('mousedown', wakeUI);
+  bookStage.addEventListener('touchstart', wakeUI, passOpt);
 
   // ── Init ──────────────────────────────────────────────────
-  renderThumbs();
+  buildThumbs();
 
-  // Start with sidebar open on desktop, closed on mobile/tablet
-  if (isDesktop()) {
-    openSidebar();
-  } else {
-    closeSidebar();
-  }
+  frontImage.src = slides[0];
+  frontImage.alt = 'Slide 1';
+  backImage.src  = slides[0];
+  backImage.alt  = 'Slide 1';
 
-  goTo(0);
+  updateHUD();
+  wakeUI();
+
+  // Preload first few slides immediately
+  preload(1); preload(2); preload(3);
 })();
