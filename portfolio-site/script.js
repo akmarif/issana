@@ -131,25 +131,63 @@
   nextBtn.addEventListener('click', function () { navigate(1); });
 
   // ── Fullscreen ────────────────────────────────────────────
-  function getFS() { return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null; }
+  // Feature-detect: iPhone Safari < 16.4 and some Android browsers
+  // expose the methods but silently do nothing — detect first.
+  var fsSupported = !!(
+    document.fullscreenEnabled       ||
+    document.webkitFullscreenEnabled ||
+    document.mozFullScreenEnabled    ||
+    document.msFullscreenEnabled
+  );
+
+  // Hide the button on devices where fullscreen is not available
+  if (!fsSupported && fullscreenBtn) {
+    fullscreenBtn.style.display = 'none';
+  }
+
+  function getFS() {
+    return document.fullscreenElement       ||
+           document.webkitFullscreenElement ||
+           document.mozFullScreenElement    ||
+           document.msFullscreenElement     || null;
+  }
+
   function reqFS(el) {
-    if (el.requestFullscreen)            { el.requestFullscreen(); }
-    else if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); }
-    else if (el.mozRequestFullScreen)    { el.mozRequestFullScreen(); }
-    else if (el.msRequestFullscreen)     { el.msRequestFullscreen(); }
+    try {
+      var p;
+      if (el.requestFullscreen)            { p = el.requestFullscreen(); }
+      else if (el.webkitRequestFullscreen) { p = el.webkitRequestFullscreen(); }
+      else if (el.mozRequestFullScreen)    { p = el.mozRequestFullScreen(); }
+      else if (el.msRequestFullscreen)     { p = el.msRequestFullscreen(); }
+      // requestFullscreen returns a Promise in modern browsers;
+      // catch rejection so it never surfaces as an unhandled error
+      // (iOS Safari may reject even when fsSupported is true)
+      if (p && typeof p['catch'] === 'function') {
+        p['catch'](function () { /* silently ignore — e.g. user denied */ });
+      }
+    } catch (e) { /* older browsers may throw synchronously */ }
   }
+
   function exitFS() {
-    if (document.exitFullscreen)             { document.exitFullscreen(); }
-    else if (document.webkitExitFullscreen)  { document.webkitExitFullscreen(); }
-    else if (document.mozCancelFullScreen)   { document.mozCancelFullScreen(); }
-    else if (document.msExitFullscreen)      { document.msExitFullscreen(); }
+    try {
+      if (document.exitFullscreen)            { document.exitFullscreen(); }
+      else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+      else if (document.mozCancelFullScreen)  { document.mozCancelFullScreen(); }
+      else if (document.msExitFullscreen)     { document.msExitFullscreen(); }
+    } catch (e) {}
   }
+
   function syncFSIcon() {
     var fs = !!getFS();
     if (fsIconExpand)   { fsIconExpand.style.display   = fs ? 'none'         : 'inline-block'; }
     if (fsIconCollapse) { fsIconCollapse.style.display = fs ? 'inline-block' : 'none'; }
   }
-  fullscreenBtn.addEventListener('click', function () { if (!getFS()) { reqFS(document.documentElement); } else { exitFS(); } });
+
+  if (fsSupported && fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', function () {
+      if (!getFS()) { reqFS(document.documentElement); } else { exitFS(); }
+    });
+  }
   document.addEventListener('fullscreenchange',       syncFSIcon);
   document.addEventListener('webkitfullscreenchange', syncFSIcon);
   document.addEventListener('mozfullscreenchange',    syncFSIcon);
