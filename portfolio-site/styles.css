@@ -5,6 +5,8 @@
   --panel-bg: #0f0f0f;
   --anim-dur: 0.65s;
   --anim-ease: cubic-bezier(0.645, 0.045, 0.355, 1.000);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bar-h: 60px;
 }
 
 /* ─── Reset ─────────────────────────────────────────────── */
@@ -28,6 +30,11 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overscroll-behavior: none;
   -ms-scroll-chaining: none;
+  /* Prevent iOS long-press text selection */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 /* ─── Book Stage ─────────────────────────────────────────── */
@@ -35,9 +42,20 @@ html, body {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: #000;
-  -webkit-perspective: 2400px;
-  perspective: 2400px;
+  /* Mobile-optimised perspective — smaller value = more dramatic curl on narrow screens */
+  -webkit-perspective: 1200px;
+  perspective: 1200px;
   overflow: hidden;
+  /* CRITICAL: prevent browser scroll/zoom from eating touch events */
+  touch-action: none;
+}
+
+/* Wider screens get deeper perspective for subtler effect */
+@media (min-width: 769px) {
+  .book-stage {
+    -webkit-perspective: 2000px;
+    perspective: 2000px;
+  }
 }
 
 .book-layer {
@@ -52,6 +70,9 @@ html, body {
   -webkit-box-pack: center;
   -ms-flex-pack: center;
   justify-content: center;
+  /* Force GPU compositing layer on both layers */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 /* Back layer — destination slide, revealed during flip */
@@ -92,9 +113,12 @@ html, body {
 /* Front layer — current slide, animates away like a book page */
 #frontLayer {
   z-index: 2;
-  /* Disappears when rotated past 90° — reveals back layer */
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  /* Pre-allocate GPU compositing layer for smooth animation */
+  will-change: transform;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 /* ── Forward: page curls left (next slide) ── */
@@ -135,7 +159,8 @@ html, body {
 .book-layer img {
   display: block;
   max-width: 100%;
-  max-height: calc(100% - 60px); /* leave room for bottom bar */
+  /* Account for bottom bar height AND safe area inset on notched phones */
+  max-height: calc(100% - var(--bar-h) - var(--safe-bottom));
   width: auto;
   height: auto;
   -o-object-fit: contain;
@@ -147,6 +172,8 @@ html, body {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  /* Prevent drag ghost on desktop */
+  -webkit-drag: none;
 }
 
 /* ─── Nav Arrows ─────────────────────────────────────────── */
@@ -157,10 +184,10 @@ html, body {
   -ms-transform: translateY(-50%);
   transform: translateY(-50%);
   z-index: 40;
-  background: rgba(0,0,0,0.28);
-  border: 1px solid rgba(255,255,255,0.09);
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
   color: #fff;
-  width: 54px;
+  width: 52px;
   height: 110px;
   cursor: pointer;
   display: -webkit-box;
@@ -174,6 +201,7 @@ html, body {
   justify-content: center;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+  /* Prevent double-tap zoom; allow tap to work cleanly */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   -webkit-transition: background 0.2s, opacity 0.35s;
@@ -195,10 +223,7 @@ html, body {
   border-radius: 12px 0 0 12px;
   border-right: none;
 }
-.nav-arrow:hover, .nav-arrow:focus {
-  background: rgba(0,0,0,0.72);
-  outline: none;
-}
+.nav-arrow:hover, .nav-arrow:focus { background: rgba(0,0,0,0.72); outline: none; }
 .nav-arrow:active { background: rgba(59,130,246,0.45); }
 .nav-arrow:disabled { opacity: 0.15 !important; cursor: default; pointer-events: none; }
 .nav-arrow svg { width: 26px; height: 26px; }
@@ -208,9 +233,9 @@ html, body {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 40;
-  padding-bottom: env(safe-area-inset-bottom);
-  -webkit-transition: opacity 0.4s ease;
-  transition: opacity 0.4s ease;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  -webkit-transition: opacity 0.5s ease;
+  transition: opacity 0.5s ease;
 }
 .progress-track {
   height: 3px;
@@ -236,8 +261,8 @@ html, body {
   -ms-flex-pack: justify;
   justify-content: space-between;
   padding: 10px 18px 14px;
-  background: -webkit-linear-gradient(top, transparent, rgba(0,0,0,0.88));
-  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.88));
+  background: -webkit-linear-gradient(top, transparent, rgba(0,0,0,0.9));
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.9));
 }
 
 /* ─── Control Buttons ────────────────────────────────────── */
@@ -271,7 +296,7 @@ html, body {
   user-select: none;
 }
 .ctrl-btn:hover, .ctrl-btn:focus { opacity: 1; background: rgba(255,255,255,0.09); outline: none; }
-.ctrl-btn:active { background: rgba(59,130,246,0.35); }
+.ctrl-btn:active { opacity: 1; background: rgba(59,130,246,0.35); }
 .ctrl-btn svg { width: 20px; height: 20px; }
 
 .counter {
@@ -285,7 +310,7 @@ html, body {
 }
 .counter .sep { color: rgba(255,255,255,0.3); }
 
-/* ─── Auto-hide UI ───────────────────────────────────────── */
+/* ─── Auto-hide (desktop / mouse devices only) ───────────── */
 .nav-arrow,
 .bottom-bar {
   -webkit-transition: opacity 0.5s ease;
@@ -295,6 +320,80 @@ body.ui-hidden .nav-arrow,
 body.ui-hidden .bottom-bar {
   opacity: 0;
   pointer-events: none;
+}
+
+/* OVERRIDE: never auto-hide on touch/mobile devices */
+@media (hover: none) and (pointer: coarse) {
+  body.ui-hidden .nav-arrow,
+  body.ui-hidden .bottom-bar {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* Keep arrows visible at resting opacity on touch screens */
+  .nav-arrow { opacity: 0.65; }
+  .nav-arrow:active { opacity: 1; }
+}
+
+/* ─── Swipe hint (shown once on first mobile load) ──────── */
+.swipe-hint {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  -ms-transform: translateX(-50%);
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.72);
+  color: rgba(255,255,255,0.9);
+  padding: 9px 18px;
+  -webkit-border-radius: 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  white-space: nowrap;
+  z-index: 60;
+  pointer-events: none;
+  -webkit-animation: hintAnim 3s ease-in-out forwards;
+  animation: hintAnim 3s ease-in-out forwards;
+}
+.swipe-hint::before {
+  content: '← ';
+  opacity: 0.6;
+}
+.swipe-hint::after {
+  content: ' →';
+  opacity: 0.6;
+}
+@-webkit-keyframes hintAnim {
+  0%   { opacity: 0; -webkit-transform: translateX(-50%) translateY(6px); }
+  15%  { opacity: 1; -webkit-transform: translateX(-50%) translateY(0); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes hintAnim {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ─── Portrait hint on small phones ─────────────────────── */
+.portrait-hint {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  -ms-transform: translateX(-50%);
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.65);
+  color: rgba(255,255,255,0.75);
+  padding: 6px 14px;
+  -webkit-border-radius: 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 60;
+  pointer-events: none;
+  -webkit-animation: hintAnim 4s ease-in-out forwards;
+  animation: hintAnim 4s ease-in-out forwards;
 }
 
 /* ─── Thumbnail Panel ────────────────────────────────────── */
@@ -331,7 +430,7 @@ body.ui-hidden .bottom-bar {
   transform: translateY(100%);
   -webkit-transition: -webkit-transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .thumb-panel.open {
   -webkit-transform: translateY(0);
@@ -339,7 +438,6 @@ body.ui-hidden .bottom-bar {
   transform: translateY(0);
 }
 
-/* Drag handle */
 .panel-handle {
   width: 40px; height: 4px;
   background: rgba(255,255,255,0.2);
@@ -384,9 +482,11 @@ body.ui-hidden .bottom-bar {
   -ms-grid-columns: 1fr 8px 1fr 8px 1fr 8px 1fr;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  /* Allow vertical scroll even though parent has touch-action:none */
+  touch-action: pan-y;
 }
 
-/* Thumbnail cell — aspect ratio via padding-top trick for max compatibility */
+/* Thumbnail cell — padding-top aspect ratio trick */
 .thumb-cell {
   position: relative;
   padding-top: 69.2%; /* 1125 / 1626 */
@@ -435,22 +535,25 @@ body.ui-hidden .bottom-bar {
   }
 }
 @media (min-width: 1024px) {
-  .thumb-grid {
-    grid-template-columns: repeat(8, 1fr);
-  }
+  .thumb-grid { grid-template-columns: repeat(8, 1fr); }
   .nav-arrow { width: 62px; height: 130px; }
 }
+
+/* Small phones */
 @media (max-width: 480px) {
   .thumb-grid {
     -ms-grid-columns: 1fr 6px 1fr 6px 1fr;
     grid-template-columns: repeat(3, 1fr);
     gap: 6px; padding: 10px;
   }
-  .nav-arrow { width: 44px; height: 86px; }
-  .nav-arrow svg { width: 20px; height: 20px; }
+  .nav-arrow { width: 46px; height: 90px; }
+  .nav-arrow svg { width: 22px; height: 22px; }
+  .counter { font-size: 13px; }
 }
+
+/* Landscape phones */
 @media (max-height: 500px) and (orientation: landscape) {
+  :root { --bar-h: 50px; }
   .nav-arrow { height: 64px; width: 42px; }
   .bottom-controls { padding: 6px 16px 8px; }
-  .book-layer img { max-height: calc(100% - 50px); }
 }
