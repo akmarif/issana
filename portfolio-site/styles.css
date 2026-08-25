@@ -604,7 +604,14 @@ body.ui-hidden .bottom-bar {
   .nav-arrow { width: 46px; height: 90px; }
   .nav-arrow svg { width: 22px; height: 22px; }
   .counter { font-size: 13px; }
-  .download-btn { padding: 0 12px; }
+  .ctrl-btn { min-width: 40px; min-height: 40px; }
+  .ctrl-btn svg { width: 18px; height: 18px; }
+  .download-btn {
+    min-width: 40px;
+    padding: 0;
+    -webkit-box-shadow: 0 2px 10px rgba(59,130,246,0.4);
+    box-shadow: 0 2px 10px rgba(59,130,246,0.4);
+  }
   .download-label { display: none; }
 }
 
