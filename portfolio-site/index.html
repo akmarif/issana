@@ -34,20 +34,25 @@
   <div class="bottom-bar" id="bottomBar">
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
     <div class="bottom-controls">
-      <button class="ctrl-btn" id="thumbToggle" aria-label="View all slides" title="All slides">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-      </button>
+      <div class="controls-group controls-left">
+        <button class="ctrl-btn" id="thumbToggle" aria-label="View all slides" title="All slides">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </button>
+        <a class="ctrl-btn download-btn" id="downloadBtn" href="assets/Portfolio_Tasnim%20Issana.pdf" download="Portfolio_Tasnim Issana.pdf" aria-label="Download PDF portfolio" title="Download PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11.5"/><polyline points="7 10.5 12 15.5 17 10.5"/><path d="M4.5 19h15"/></svg>
+          <span class="download-label">Download</span>
+        </a>
+      </div>
       <div class="counter"><span id="currentNum">1</span><span class="sep"> / </span><span id="totalNum">1</span></div>
-      <a class="ctrl-btn" id="downloadBtn" href="assets/Portfolio_Tasnim%20Issana.pdf" download="Portfolio_Tasnim Issana.pdf" aria-label="Download PDF portfolio" title="Download PDF">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M4 19h16"/></svg>
-      </a>
-      <button class="ctrl-btn" id="fullscreenBtn" aria-label="Toggle fullscreen" title="Fullscreen">
-        <svg id="fsIconExpand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-        <svg id="fsIconCollapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none" aria-hidden="true"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
-      </button>
+      <div class="controls-group controls-right">
+        <button class="ctrl-btn" id="fullscreenBtn" aria-label="Toggle fullscreen" title="Fullscreen">
+          <svg id="fsIconExpand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          <svg id="fsIconCollapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none" aria-hidden="true"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 

@@ -265,10 +265,20 @@ html, body {
   background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.9));
 }
 
+.controls-group {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 10px;
+}
+
 /* ─── Control Buttons ────────────────────────────────────── */
 .ctrl-btn {
-  background: transparent;
-  border: none;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.09);
   color: #eaeaea;
   color: var(--text);
   text-decoration: none;
@@ -284,21 +294,65 @@ html, body {
   -webkit-box-pack: center;
   -ms-flex-pack: center;
   justify-content: center;
-  -webkit-border-radius: 8px;
-  border-radius: 8px;
+  -webkit-border-radius: 12px;
+  border-radius: 12px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  opacity: 0.75;
-  -webkit-transition: opacity 0.2s, background 0.2s;
-  transition: opacity 0.2s, background 0.2s;
+  opacity: 0.82;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-transition: opacity 0.2s, background 0.2s, border-color 0.2s, -webkit-transform 0.2s;
+  transition: opacity 0.2s, background 0.2s, border-color 0.2s, transform 0.2s;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
 }
-.ctrl-btn:hover, .ctrl-btn:focus { opacity: 1; background: rgba(255,255,255,0.09); outline: none; }
-.ctrl-btn:active { opacity: 1; background: rgba(59,130,246,0.35); }
+.ctrl-btn:hover, .ctrl-btn:focus {
+  opacity: 1;
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.22);
+  outline: none;
+  -webkit-transform: translateY(-1px);
+  transform: translateY(-1px);
+}
+.ctrl-btn:active { opacity: 1; background: rgba(59,130,246,0.35); -webkit-transform: translateY(0); transform: translateY(0); }
 .ctrl-btn svg { width: 20px; height: 20px; }
+
+/* Download button — deliberately eye-catching accent pill */
+.download-btn {
+  min-width: auto;
+  padding: 0 16px 0 14px;
+  gap: 8px;
+  background: -webkit-linear-gradient(135deg, #3b82f6, #6366f1);
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  opacity: 1;
+  -webkit-box-shadow: 0 2px 14px rgba(59,130,246,0.45);
+  box-shadow: 0 2px 14px rgba(59,130,246,0.45);
+}
+.download-btn:hover, .download-btn:focus {
+  background: -webkit-linear-gradient(135deg, #4c8bfa, #7577f5);
+  background: linear-gradient(135deg, #4c8bfa, #7577f5);
+  border-color: rgba(255,255,255,0.32);
+  -webkit-box-shadow: 0 4px 20px rgba(59,130,246,0.65);
+  box-shadow: 0 4px 20px rgba(59,130,246,0.65);
+  -webkit-transform: translateY(-1px);
+  transform: translateY(-1px);
+}
+.download-btn:active {
+  background: -webkit-linear-gradient(135deg, #2f6fdb, #504fd6);
+  background: linear-gradient(135deg, #2f6fdb, #504fd6);
+  -webkit-transform: translateY(0);
+  transform: translateY(0);
+}
+.download-label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
 
 .counter {
   font-size: 14px;
@@ -550,6 +604,8 @@ body.ui-hidden .bottom-bar {
   .nav-arrow { width: 46px; height: 90px; }
   .nav-arrow svg { width: 22px; height: 22px; }
   .counter { font-size: 13px; }
+  .download-btn { padding: 0 12px; }
+  .download-label { display: none; }
 }
 
 /* Landscape phones */
