@@ -389,6 +389,14 @@ body.ui-hidden .bottom-bar {
   .nav-arrow:active { opacity: 1; }
 }
 
+/* ─── Pseudo-fullscreen (fallback for browsers without a real
+       Fullscreen API for arbitrary elements, e.g. iPhone Safari) ──── */
+body.pseudo-fs .nav-arrow,
+body.pseudo-fs .bottom-bar {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* ─── Swipe hint (shown once on first mobile load) ──────── */
 .swipe-hint {
   position: fixed;

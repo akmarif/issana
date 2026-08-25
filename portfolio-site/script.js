@@ -131,7 +131,7 @@
   nextBtn.addEventListener('click', function () { navigate(1); });
 
   // ── Fullscreen ────────────────────────────────────────────
-  // Feature-detect: iPhone Safari < 16.4 and some Android browsers
+  // Feature-detect: iPhone Safari and some Android browsers
   // expose the methods but silently do nothing — detect first.
   var fsSupported = !!(
     document.fullscreenEnabled       ||
@@ -140,10 +140,11 @@
     document.msFullscreenEnabled
   );
 
-  // Hide the button on devices where fullscreen is not available
-  if (!fsSupported && fullscreenBtn) {
-    fullscreenBtn.style.display = 'none';
-  }
+  // iPhone Safari never supports the real Fullscreen API for arbitrary
+  // elements, so the button would otherwise vanish there. Instead of
+  // hiding it, fall back to a "pseudo-fullscreen" immersive mode that
+  // hides the chrome (nav arrows + bottom bar) to maximize the slide.
+  var pseudoFS = false;
 
   function getFS() {
     return document.fullscreenElement       ||
@@ -177,21 +178,40 @@
     } catch (e) {}
   }
 
+  function setPseudoFS(on) {
+    pseudoFS = on;
+    if (on) { add(document.body, 'pseudo-fs'); }
+    else    { rem(document.body, 'pseudo-fs'); }
+    syncFSIcon();
+  }
+
   function syncFSIcon() {
-    var fs = !!getFS();
+    var fs = fsSupported ? !!getFS() : pseudoFS;
     if (fsIconExpand)   { fsIconExpand.style.display   = fs ? 'none'         : 'inline-block'; }
     if (fsIconCollapse) { fsIconCollapse.style.display = fs ? 'inline-block' : 'none'; }
   }
 
-  if (fsSupported && fullscreenBtn) {
+  if (fullscreenBtn) {
     fullscreenBtn.addEventListener('click', function () {
-      if (!getFS()) { reqFS(document.documentElement); } else { exitFS(); }
+      if (fsSupported) {
+        if (!getFS()) { reqFS(document.documentElement); } else { exitFS(); }
+      } else {
+        setPseudoFS(!pseudoFS);
+      }
     });
   }
+
+  // Tapping/clicking the slide itself exits pseudo-fullscreen (since the
+  // chrome, including this same button, is hidden while it's active).
+  bookStage.addEventListener('click', function () {
+    if (!fsSupported && pseudoFS) { setPseudoFS(false); }
+  });
+
   document.addEventListener('fullscreenchange',       syncFSIcon);
   document.addEventListener('webkitfullscreenchange', syncFSIcon);
   document.addEventListener('mozfullscreenchange',    syncFSIcon);
   document.addEventListener('MSFullscreenChange',     syncFSIcon);
+
 
   // ── Thumbnail panel ───────────────────────────────────────
   function buildThumbs() {
@@ -260,6 +280,7 @@
       if (key === 'Escape' || code === 27) { closePanel(); }
       return;
     }
+    if ((key === 'Escape' || code === 27) && !fsSupported && pseudoFS) { setPseudoFS(false); return; }
     if (key === 'ArrowRight' || key === 'PageDown' || key === ' ' || code === 39 || code === 34 || code === 32) {
       if (e.preventDefault) { e.preventDefault(); }
       navigate(1);
