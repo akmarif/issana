@@ -271,6 +271,7 @@ html, body {
   border: none;
   color: #eaeaea;
   color: var(--text);
+  text-decoration: none;
   cursor: pointer;
   min-width: 44px;
   min-height: 44px;
