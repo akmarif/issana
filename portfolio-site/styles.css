@@ -319,33 +319,11 @@ html, body {
 .ctrl-btn:active { opacity: 1; background: rgba(59,130,246,0.35); -webkit-transform: translateY(0); transform: translateY(0); }
 .ctrl-btn svg { width: 20px; height: 20px; }
 
-/* Download button — deliberately eye-catching accent pill */
+/* Download button — same look as other controls, wider to fit label */
 .download-btn {
   min-width: auto;
   padding: 0 16px 0 14px;
   gap: 8px;
-  background: -webkit-linear-gradient(135deg, #3b82f6, #6366f1);
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
-  border: 1px solid rgba(255,255,255,0.18);
-  color: #fff;
-  opacity: 1;
-  -webkit-box-shadow: 0 2px 14px rgba(59,130,246,0.45);
-  box-shadow: 0 2px 14px rgba(59,130,246,0.45);
-}
-.download-btn:hover, .download-btn:focus {
-  background: -webkit-linear-gradient(135deg, #4c8bfa, #7577f5);
-  background: linear-gradient(135deg, #4c8bfa, #7577f5);
-  border-color: rgba(255,255,255,0.32);
-  -webkit-box-shadow: 0 4px 20px rgba(59,130,246,0.65);
-  box-shadow: 0 4px 20px rgba(59,130,246,0.65);
-  -webkit-transform: translateY(-1px);
-  transform: translateY(-1px);
-}
-.download-btn:active {
-  background: -webkit-linear-gradient(135deg, #2f6fdb, #504fd6);
-  background: linear-gradient(135deg, #2f6fdb, #504fd6);
-  -webkit-transform: translateY(0);
-  transform: translateY(0);
 }
 .download-label {
   font-size: 14px;
@@ -617,8 +595,6 @@ body.pseudo-fs .bottom-bar {
   .download-btn {
     min-width: 40px;
     padding: 0;
-    -webkit-box-shadow: 0 2px 10px rgba(59,130,246,0.4);
-    box-shadow: 0 2px 10px rgba(59,130,246,0.4);
   }
   .download-label { display: none; }
 }
