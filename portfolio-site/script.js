@@ -1,5 +1,5 @@
 (function () {
-  var TOTAL   = 41;
+  var TOTAL   = 45;
   var ANIM_MS = 650;
 
   var slides = [];
