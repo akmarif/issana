@@ -1,6 +1,6 @@
 (function () {
   var TOTAL   = 45;
-  var ANIM_MS = 650;
+  var ANIM_MS = 720;
 
   var slides = [];
   for (var i = 0; i < TOTAL; i++) {
@@ -87,7 +87,87 @@
     preload(current - 1);
   }
 
-  // ── Page-flip navigation ──────────────────────────────────
+  // ── Page-flip navigation ───────────────────────────────────
+  // Real paper-curl effect: the leaving page is sliced into thin vertical
+  // segments, nested in the DOM so each segment's rotation compounds on
+  // top of its neighbour (like a paper fan). A per-segment curl bulge
+  // (extra rotation + forward translateZ, strongest at the far edge from
+  // the hinge, zero at the hinge) makes the page arch and lift instead of
+  // rotating as one rigid flat plane — the "PowerPoint flip" look.
+  var CURL_SEGS  = 12;  // number of vertical strips that make up the fan
+  var CURL_ANGLE = 58;  // extra degrees of curl at the peak of the bulge
+  var CURL_Z     = 78;  // px the curl lifts toward the viewer at its peak
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function buildCurl(dir, rect, srcSrc) {
+    var n = CURL_SEGS;
+    var stripW = rect.width / n;
+
+    var root = document.createElement('div');
+    root.className = 'curl-root';
+    root.style.left   = rect.left + 'px';
+    root.style.top    = rect.top + 'px';
+    root.style.width  = rect.width + 'px';
+    root.style.height = rect.height + 'px';
+
+    var segs = [];
+    var parentEl = root;
+
+    for (var idx = 0; idx < n; idx++) {
+      // idx = position in the hinge chain (0 = at the hinge, n-1 = far tip)
+      // sliceIdx = which horizontal slice of the actual image this shows
+      var sliceIdx = dir > 0 ? idx : (n - 1 - idx);
+
+      var seg = document.createElement('div');
+      seg.className = 'curl-seg';
+      seg.style.width = stripW + 'px';
+      seg.style.backgroundImage  = 'url(' + srcSrc + ')';
+      seg.style.backgroundSize   = rect.width + 'px ' + rect.height + 'px';
+      seg.style.backgroundPosition = (-(sliceIdx * stripW)) + 'px 0px';
+      seg.style.transformOrigin = dir > 0 ? '0% 50%' : '100% 50%';
+
+      if (idx === 0) {
+        seg.style.left = dir > 0 ? '0px' : (rect.width - stripW) + 'px';
+        root.appendChild(seg);
+      } else {
+        // Attach each segment to the previous one's outer edge so the
+        // fan chain reads as one continuous sheet before it curls.
+        seg.style.left = (dir > 0 ? stripW : -stripW) + 'px';
+        parentEl.appendChild(seg);
+      }
+
+      var shade = document.createElement('div');
+      shade.className = 'curl-shade';
+      seg.appendChild(shade);
+
+      segs.push({ el: seg, shade: shade, idx: idx });
+      parentEl = seg;
+    }
+
+    return { root: root, segs: segs };
+  }
+
+  function renderCurl(curl, dir, n, t) {
+    var sign  = dir > 0 ? -1 : 1;
+    var eased = easeInOutCubic(t);
+    var bulge = Math.sin(Math.PI * t); // 0 at start/end, peaks mid-flip
+
+    for (var k = 0; k < curl.segs.length; k++) {
+      var idx    = curl.segs[k].idx;
+      var weight = idx / (n - 1); // 0 at hinge, 1 at far tip
+      var baseDeg = sign * (180 / n) * eased;
+      var curlDeg = sign * CURL_ANGLE * bulge * weight;
+      var z       = CURL_Z * bulge * weight;
+
+      curl.segs[k].el.style.transform =
+        'rotateY(' + (baseDeg + curlDeg) + 'deg) translateZ(' + z + 'px)';
+      curl.segs[k].shade.style.opacity = Math.min(0.55, bulge * weight * 0.6 + eased * 0.12);
+    }
+  }
+
   function navigate(dir) {
     if (isAnimating) return;
     var next = current + dir;
@@ -99,21 +179,44 @@
     backImage.src = slides[next];
     backImage.alt = 'Slide ' + (next + 1);
 
-    var flipCls   = dir > 0 ? 'flip-fwd'   : 'flip-bwd';
     var revealCls = dir > 0 ? 'reveal-fwd' : 'reveal-bwd';
+    add(backLayer, revealCls);
 
-    add(frontLayer, flipCls);
-    add(backLayer,  revealCls);
+    var imgRect   = frontImage.getBoundingClientRect();
+    var stageRect = bookStage.getBoundingClientRect();
+    var rect = {
+      left:   imgRect.left - stageRect.left,
+      top:    imgRect.top  - stageRect.top,
+      width:  imgRect.width,
+      height: imgRect.height
+    };
 
-    setTimeout(function () {
+    var curl = buildCurl(dir, rect, frontImage.src);
+    frontImage.style.visibility = 'hidden';
+    frontLayer.appendChild(curl.root);
+
+    var n = CURL_SEGS;
+    var startTime = null;
+
+    function finish() {
       current = next;
       frontImage.src = slides[current];
       frontImage.alt = 'Slide ' + (current + 1);
-      rem(frontLayer, flipCls);
-      rem(backLayer,  revealCls);
+      frontImage.style.visibility = '';
+      if (curl.root.parentNode) { curl.root.parentNode.removeChild(curl.root); }
+      rem(backLayer, revealCls);
       isAnimating = false;
       updateHUD();
-    }, ANIM_MS);
+    }
+
+    function frame(ts) {
+      if (startTime === null) { startTime = ts; }
+      var t = Math.min(1, (ts - startTime) / ANIM_MS);
+      renderCurl(curl, dir, n, t);
+      if (t < 1) { requestAnimationFrame(frame); } else { finish(); }
+    }
+
+    requestAnimationFrame(frame);
   }
 
   // Direct jump — no animation (thumbnail / Home / End)

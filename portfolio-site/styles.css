@@ -110,49 +110,54 @@ html, body {
   100% { opacity: 0; }
 }
 
-/* Front layer — current slide, animates away like a book page */
+/* Front layer — current slide; holds the curl-root fan while it animates
+   away like a real turning page. preserve-3d lets the perspective set on
+   .book-stage carry through to the nested curl segments below. */
 #frontLayer {
   z-index: 2;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  /* Pre-allocate GPU compositing layer for smooth animation */
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
   will-change: transform;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
 }
 
-/* ── Forward: page curls left (next slide) ── */
-#frontLayer.flip-fwd {
-  -webkit-transform-origin: left center;
-  -ms-transform-origin: left center;
-  transform-origin: left center;
-  -webkit-animation: flipFwd var(--anim-dur) var(--anim-ease) forwards;
-  animation: flipFwd var(--anim-dur) var(--anim-ease) forwards;
-}
-@-webkit-keyframes flipFwd {
-  0%   { -webkit-transform: rotateY(0deg); }
-  100% { -webkit-transform: rotateY(-180deg); }
-}
-@keyframes flipFwd {
-  0%   { transform: rotateY(0deg); }
-  100% { transform: rotateY(-180deg); }
+/* ─── Page-curl fan ──────────────────────────────────────────
+   The leaving page is sliced into thin vertical segments, nested in the
+   DOM so each one's rotation compounds on its neighbour like a paper
+   fan. JS drives per-frame transforms (see script.js) — this just sets
+   up the 3D context and per-segment look. */
+.curl-root {
+  position: absolute;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  z-index: 3;
 }
 
-/* ── Backward: page curls right (previous slide) ── */
-#frontLayer.flip-bwd {
-  -webkit-transform-origin: right center;
-  -ms-transform-origin: right center;
-  transform-origin: right center;
-  -webkit-animation: flipBwd var(--anim-dur) var(--anim-ease) forwards;
-  animation: flipBwd var(--anim-dur) var(--anim-ease) forwards;
+.curl-seg {
+  position: absolute;
+  top: 0; height: 100%;
+  background-repeat: no-repeat;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  will-change: transform;
+  /* Soft shadow along the fold so segments read as one bending sheet */
+  -webkit-box-shadow: inset 0 0 14px rgba(0,0,0,0.25);
+  box-shadow: inset 0 0 14px rgba(0,0,0,0.25);
 }
-@-webkit-keyframes flipBwd {
-  0%   { -webkit-transform: rotateY(0deg); }
-  100% { -webkit-transform: rotateY(180deg); }
-}
-@keyframes flipBwd {
-  0%   { transform: rotateY(0deg); }
-  100% { transform: rotateY(180deg); }
+
+/* Darkens progressively as its segment curls away from flat, simulating
+   the page losing direct light as it lifts and bends. */
+.curl-shade {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: -webkit-linear-gradient(left, rgba(0,0,0,0.6), rgba(0,0,0,0));
+  background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0));
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Slide images */
