@@ -15,7 +15,6 @@
   var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
 
   // ── DOM refs ──────────────────────────────────────────────
-  var frontLayer    = document.getElementById('frontLayer');
   var backLayer     = document.getElementById('backLayer');
   var frontImage    = document.getElementById('frontImage');
   var backImage     = document.getElementById('backImage');
