@@ -3,8 +3,8 @@
   --accent: #3b82f6;
   --text: #eaeaea;
   --panel-bg: #0f0f0f;
-  --anim-dur: 0.65s;
-  --anim-ease: cubic-bezier(0.645, 0.045, 0.355, 1.000);
+  --slide-duration: 480ms;
+  --slide-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --bar-h: 60px;
 }
@@ -42,20 +42,9 @@ html, body {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: #000;
-  /* Mobile-optimised perspective — smaller value = more dramatic curl on narrow screens */
-  -webkit-perspective: 1200px;
-  perspective: 1200px;
   overflow: hidden;
-  /* CRITICAL: prevent browser scroll/zoom from eating touch events */
+  /* Prevent browser scroll/zoom from eating touch events */
   touch-action: none;
-}
-
-/* Wider screens get deeper perspective for subtler effect */
-@media (min-width: 769px) {
-  .book-stage {
-    -webkit-perspective: 2000px;
-    perspective: 2000px;
-  }
 }
 
 .book-layer {
@@ -70,94 +59,50 @@ html, body {
   -webkit-box-pack: center;
   -ms-flex-pack: center;
   justify-content: center;
-  /* Force GPU compositing layer on both layers */
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
 }
 
-/* Back layer — destination slide, revealed during flip */
-#backLayer { z-index: 1; }
+/* Keep the destination hidden until its image has loaded and the transition begins. */
+#backLayer { z-index: 1; opacity: 0; }
+#frontLayer { z-index: 2; }
 
-/* Shadow sweep on back layer as the flipping page uncovers it */
-#backLayer::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none;
-  opacity: 0;
+.book-stage.transitioning .book-layer {
+  will-change: opacity, transform;
+}
+.book-stage.in-motion .book-layer {
+  -webkit-transition: opacity var(--slide-duration) var(--slide-ease), -webkit-transform var(--slide-duration) var(--slide-ease);
+  transition: opacity var(--slide-duration) var(--slide-ease), transform var(--slide-duration) var(--slide-ease);
 }
 
-#backLayer.reveal-fwd::after {
-  background: -webkit-linear-gradient(left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 30%, transparent 60%);
-  background: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 30%, transparent 60%);
-  -webkit-animation: shadowFade var(--anim-dur) var(--anim-ease) forwards;
-  animation: shadowFade var(--anim-dur) var(--anim-ease) forwards;
+.book-stage.transitioning.forward #backLayer {
+  -webkit-transform: translate3d(24px, 0, 0) scale(0.985);
+  transform: translate3d(24px, 0, 0) scale(0.985);
+}
+.book-stage.transitioning.backward #backLayer {
+  -webkit-transform: translate3d(-24px, 0, 0) scale(0.985);
+  transform: translate3d(-24px, 0, 0) scale(0.985);
+}
+.book-stage.transitioning.in-motion #backLayer {
+  opacity: 1;
+  -webkit-transform: translate3d(0, 0, 0) scale(1);
+  transform: translate3d(0, 0, 0) scale(1);
+}
+.book-stage.in-motion #frontLayer { opacity: 0; }
+.book-stage.in-motion.forward #frontLayer {
+  -webkit-transform: translate3d(-24px, 0, 0) scale(0.985);
+  transform: translate3d(-24px, 0, 0) scale(0.985);
+}
+.book-stage.in-motion.backward #frontLayer {
+  -webkit-transform: translate3d(24px, 0, 0) scale(0.985);
+  transform: translate3d(24px, 0, 0) scale(0.985);
 }
 
-#backLayer.reveal-bwd::after {
-  background: -webkit-linear-gradient(right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 30%, transparent 60%);
-  background: linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 30%, transparent 60%);
-  -webkit-animation: shadowFade var(--anim-dur) var(--anim-ease) forwards;
-  animation: shadowFade var(--anim-dur) var(--anim-ease) forwards;
-}
-
-@-webkit-keyframes shadowFade {
-  0%   { opacity: 1; }
-  100% { opacity: 0; }
-}
-@keyframes shadowFade {
-  0%   { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-/* Front layer — current slide; holds the curl-root fan while it animates
-   away like a real turning page. preserve-3d lets the perspective set on
-   .book-stage carry through to the nested curl segments below. */
-#frontLayer {
-  z-index: 2;
-  -webkit-transform-style: preserve-3d;
-  transform-style: preserve-3d;
-  will-change: transform;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-}
-
-/* ─── Page-curl fan ──────────────────────────────────────────
-   The leaving page is sliced into thin vertical segments, nested in the
-   DOM so each one's rotation compounds on its neighbour like a paper
-   fan. JS drives per-frame transforms (see script.js) — this just sets
-   up the 3D context and per-segment look. */
-.curl-root {
-  position: absolute;
-  -webkit-transform-style: preserve-3d;
-  transform-style: preserve-3d;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.curl-seg {
-  position: absolute;
-  top: 0; height: 100%;
-  background-repeat: no-repeat;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  -webkit-transform-style: preserve-3d;
-  transform-style: preserve-3d;
-  will-change: transform;
-  /* Soft shadow along the fold so segments read as one bending sheet */
-  -webkit-box-shadow: inset 0 0 14px rgba(0,0,0,0.25);
-  box-shadow: inset 0 0 14px rgba(0,0,0,0.25);
-}
-
-/* Darkens progressively as its segment curls away from flat, simulating
-   the page losing direct light as it lifts and bends. */
-.curl-shade {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: -webkit-linear-gradient(left, rgba(0,0,0,0.6), rgba(0,0,0,0));
-  background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0));
-  opacity: 0;
-  pointer-events: none;
+@media (prefers-reduced-motion: reduce) {
+  .book-stage.in-motion .book-layer {
+    -webkit-transition-duration: 0.01ms;
+    transition-duration: 0.01ms;
+  }
 }
 
 /* Slide images */

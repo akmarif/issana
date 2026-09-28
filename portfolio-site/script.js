@@ -1,6 +1,6 @@
 (function () {
   var TOTAL   = 47;
-  var ANIM_MS = 720;
+  var ANIM_MS = 480;
 
   var slides = [];
   for (var i = 0; i < TOTAL; i++) {
@@ -53,10 +53,12 @@
   // ── Preloading ────────────────────────────────────────────
   var preloaded = {};
   function preload(idx) {
-    if (idx < 0 || idx >= TOTAL || preloaded[idx]) return;
-    preloaded[idx] = true;
-    var img = new Image();
-    img.src = slides[idx];
+    if (idx < 0 || idx >= TOTAL) return null;
+    if (!preloaded[idx]) {
+      preloaded[idx] = new Image();
+      preloaded[idx].src = slides[idx];
+    }
+    return preloaded[idx];
   }
 
   // ── Update HUD ────────────────────────────────────────────
@@ -85,148 +87,114 @@
     preload(current + 1);
     preload(current + 2);
     preload(current - 1);
-  }
-
-  // ── Page-flip navigation ───────────────────────────────────
-  // Real paper-curl effect: the leaving page is sliced into thin vertical
-  // segments, nested in the DOM so each segment's rotation compounds on
-  // top of its neighbour (like a paper fan). A per-segment curl bulge
-  // (extra rotation + forward translateZ, strongest at the far edge from
-  // the hinge, zero at the hinge) makes the page arch and lift instead of
-  // rotating as one rigid flat plane — the "PowerPoint flip" look.
-  var CURL_SEGS  = 12;  // number of vertical strips that make up the fan
-  var CURL_ANGLE = 58;  // extra degrees of curl at the peak of the bulge
-  var CURL_Z     = 78;  // px the curl lifts toward the viewer at its peak
-
-  function easeInOutCubic(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
-
-  function buildCurl(dir, rect, srcSrc) {
-    var n = CURL_SEGS;
-    var stripW = rect.width / n;
-
-    var root = document.createElement('div');
-    root.className = 'curl-root';
-    root.style.left   = rect.left + 'px';
-    root.style.top    = rect.top + 'px';
-    root.style.width  = rect.width + 'px';
-    root.style.height = rect.height + 'px';
-
-    var segs = [];
-    var parentEl = root;
-
-    for (var idx = 0; idx < n; idx++) {
-      // idx = position in the hinge chain (0 = at the hinge, n-1 = far tip)
-      // sliceIdx = which horizontal slice of the actual image this shows
-      var sliceIdx = dir > 0 ? idx : (n - 1 - idx);
-
-      var seg = document.createElement('div');
-      seg.className = 'curl-seg';
-      seg.style.width = stripW + 'px';
-      seg.style.backgroundImage  = 'url(' + srcSrc + ')';
-      seg.style.backgroundSize   = rect.width + 'px ' + rect.height + 'px';
-      seg.style.backgroundPosition = (-(sliceIdx * stripW)) + 'px 0px';
-      seg.style.transformOrigin = dir > 0 ? '0% 50%' : '100% 50%';
-
-      if (idx === 0) {
-        seg.style.left = dir > 0 ? '0px' : (rect.width - stripW) + 'px';
-        root.appendChild(seg);
-      } else {
-        // Attach each segment to the previous one's outer edge so the
-        // fan chain reads as one continuous sheet before it curls.
-        seg.style.left = (dir > 0 ? stripW : -stripW) + 'px';
-        parentEl.appendChild(seg);
+    for (var key in preloaded) {
+      if (Object.prototype.hasOwnProperty.call(preloaded, key) && Math.abs(Number(key) - current) > 2) {
+        delete preloaded[key];
       }
-
-      var shade = document.createElement('div');
-      shade.className = 'curl-shade';
-      seg.appendChild(shade);
-
-      segs.push({ el: seg, shade: shade, idx: idx });
-      parentEl = seg;
     }
-
-    return { root: root, segs: segs };
   }
 
-  function renderCurl(curl, dir, n, t) {
-    var sign  = dir > 0 ? -1 : 1;
-    var eased = easeInOutCubic(t);
-    var bulge = Math.sin(Math.PI * t); // 0 at start/end, peaks mid-flip
+  // ── Slide navigation ───────────────────────────────────────
+  var frameId = null;
+  var finishTimer = null;
+  var pendingImage = null;
+  var pendingLoad = null;
+  var pendingError = null;
+  var endTransition = null;
 
-    for (var k = 0; k < curl.segs.length; k++) {
-      var idx    = curl.segs[k].idx;
-      var weight = idx / (n - 1); // 0 at hinge, 1 at far tip
-      var baseDeg = sign * (180 / n) * eased;
-      var curlDeg = sign * CURL_ANGLE * bulge * weight;
-      var z       = CURL_Z * bulge * weight;
-
-      curl.segs[k].el.style.transform =
-        'rotateY(' + (baseDeg + curlDeg) + 'deg) translateZ(' + z + 'px)';
-      curl.segs[k].shade.style.opacity = Math.min(0.55, bulge * weight * 0.6 + eased * 0.12);
+  function cancelTransition() {
+    if (pendingImage) {
+      pendingImage.removeEventListener('load', pendingLoad);
+      pendingImage.removeEventListener('error', pendingError);
+      pendingImage = null;
     }
+    if (frameId !== null) cancelAnimationFrame(frameId);
+    clearTimeout(finishTimer);
+    if (endTransition) backLayer.removeEventListener('transitionend', endTransition);
+    frameId = null;
+    endTransition = null;
+    rem(bookStage, 'transitioning');
+    rem(bookStage, 'in-motion');
+    rem(bookStage, 'forward');
+    rem(bookStage, 'backward');
+    isAnimating = false;
   }
 
   function navigate(dir) {
     if (isAnimating) return;
     var next = current + dir;
     if (next < 0 || next >= TOTAL) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      jumpTo(next);
+      return;
+    }
 
     isAnimating = true;
     wakeUI();
 
-    backImage.src = slides[next];
-    backImage.alt = 'Slide ' + (next + 1);
-
-    var revealCls = dir > 0 ? 'reveal-fwd' : 'reveal-bwd';
-    add(backLayer, revealCls);
-
-    var imgRect   = frontImage.getBoundingClientRect();
-    var stageRect = bookStage.getBoundingClientRect();
-    var rect = {
-      left:   imgRect.left - stageRect.left,
-      top:    imgRect.top  - stageRect.top,
-      width:  imgRect.width,
-      height: imgRect.height
-    };
-
-    var curl = buildCurl(dir, rect, frontImage.src);
-    frontImage.style.visibility = 'hidden';
-    frontLayer.appendChild(curl.root);
-
-    var n = CURL_SEGS;
-    var startTime = null;
-
     function finish() {
+      if (!isAnimating) return;
+      cancelTransition();
       current = next;
       frontImage.src = slides[current];
       frontImage.alt = 'Slide ' + (current + 1);
-      frontImage.style.visibility = '';
-      if (curl.root.parentNode) { curl.root.parentNode.removeChild(curl.root); }
-      rem(backLayer, revealCls);
-      isAnimating = false;
       updateHUD();
     }
 
-    function frame(ts) {
-      if (startTime === null) { startTime = ts; }
-      var t = Math.min(1, (ts - startTime) / ANIM_MS);
-      renderCurl(curl, dir, n, t);
-      if (t < 1) { requestAnimationFrame(frame); } else { finish(); }
+    function startTransition() {
+      if (pendingImage) {
+        pendingImage.removeEventListener('load', pendingLoad);
+        pendingImage.removeEventListener('error', pendingError);
+        pendingImage = null;
+      }
+      backImage.src = slides[next];
+      backImage.alt = 'Slide ' + (next + 1);
+      add(bookStage, 'transitioning');
+      add(bookStage, dir > 0 ? 'forward' : 'backward');
+      endTransition = function (e) {
+        if (e.target === backLayer && e.propertyName === 'opacity') finish();
+      };
+      backLayer.addEventListener('transitionend', endTransition);
+      // Let the incoming slide's starting position paint before moving both layers.
+      frameId = requestAnimationFrame(function () {
+        frameId = requestAnimationFrame(function () {
+          frameId = null;
+          add(bookStage, 'in-motion');
+          finishTimer = setTimeout(finish, ANIM_MS + 120);
+        });
+      });
     }
 
-    requestAnimationFrame(frame);
+    var image = preload(next);
+    if (image.complete) {
+      if (image.naturalWidth) startTransition();
+      else {
+        delete preloaded[next];
+        cancelTransition();
+        console.error('Could not load slide ' + (next + 1));
+      }
+    } else {
+      pendingImage = image;
+      pendingLoad = startTransition;
+      pendingError = function () {
+        delete preloaded[next];
+        cancelTransition();
+        console.error('Could not load slide ' + (next + 1));
+      };
+      image.addEventListener('load', pendingLoad);
+      image.addEventListener('error', pendingError);
+    }
   }
 
   // Direct jump — no animation (thumbnail / Home / End)
   function jumpTo(idx) {
-    if (idx < 0 || idx >= TOTAL || idx === current) return;
-    isAnimating = false;
+    if (idx < 0 || idx >= TOTAL || (idx === current && !isAnimating)) return;
+    cancelTransition();
     current = idx;
     frontImage.src = slides[current];
     frontImage.alt = 'Slide ' + (current + 1);
     backImage.src  = slides[current];
+    backImage.alt  = 'Slide ' + (current + 1);
     updateHUD();
   }
 
