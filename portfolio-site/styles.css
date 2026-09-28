@@ -97,6 +97,11 @@ html, body {
   pointer-events: none;
   -webkit-perspective: 1600px;
   perspective: 1600px;
+  will-change: opacity;
+}
+.book-stage.in-motion .turn-scene {
+  -webkit-animation: pageFade var(--turn-duration) linear both;
+  animation: pageFade var(--turn-duration) linear both;
 }
 .turn-sheet {
   position: absolute;
@@ -194,7 +199,19 @@ html, body {
   0%, 100% { opacity: 0; }
   45% { opacity: 0.85; }
 }
+@-webkit-keyframes pageFade {
+  0%, 50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes pageFade {
+  0%, 50% { opacity: 1; }
+  100% { opacity: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
+  .book-stage.in-motion .turn-scene {
+    -webkit-animation: none;
+    animation: none;
+  }
   .book-stage.in-motion .turn-sheet {
     -webkit-transition-duration: 0.01ms;
     transition-duration: 0.01ms;

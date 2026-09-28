@@ -100,7 +100,7 @@
   var pendingImage = null;
   var pendingLoad = null;
   var pendingError = null;
-  var endTransition = null;
+  var endFade = null;
   var turnScene = null;
   var turnSheet = null;
 
@@ -112,10 +112,10 @@
     }
     if (frameId !== null) cancelAnimationFrame(frameId);
     clearTimeout(finishTimer);
-    if (endTransition && turnSheet) turnSheet.removeEventListener('transitionend', endTransition);
+    if (endFade && turnScene) turnScene.removeEventListener('animationend', endFade);
     if (turnScene && turnScene.parentNode) turnScene.parentNode.removeChild(turnScene);
     frameId = null;
-    endTransition = null;
+    endFade = null;
     turnScene = null;
     turnSheet = null;
     rem(bookStage, 'turning');
@@ -205,10 +205,10 @@
       buildPageTurn();
       add(bookStage, 'turning');
       add(bookStage, dir > 0 ? 'forward' : 'backward');
-      endTransition = function (e) {
-        if (e.target === turnSheet && e.propertyName === 'transform') finish();
+      endFade = function (e) {
+        if (e.target === turnScene && e.animationName === 'pageFade') finish();
       };
-      turnSheet.addEventListener('transitionend', endTransition);
+      turnScene.addEventListener('animationend', endFade);
       // Paint the flat page before rotating it away from the destination slide.
       frameId = requestAnimationFrame(function () {
         frameId = requestAnimationFrame(function () {
