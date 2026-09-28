@@ -1,6 +1,6 @@
 (function () {
   var TOTAL   = 47;
-  var ANIM_MS = 480;
+  var ANIM_MS = 820;
 
   var slides = [];
   for (var i = 0; i < TOTAL; i++) {
@@ -15,6 +15,7 @@
   var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
 
   // ── DOM refs ──────────────────────────────────────────────
+  var frontLayer    = document.getElementById('frontLayer');
   var backLayer     = document.getElementById('backLayer');
   var frontImage    = document.getElementById('frontImage');
   var backImage     = document.getElementById('backImage');
@@ -100,6 +101,8 @@
   var pendingLoad = null;
   var pendingError = null;
   var endTransition = null;
+  var turnScene = null;
+  var turnSheet = null;
 
   function cancelTransition() {
     if (pendingImage) {
@@ -109,10 +112,13 @@
     }
     if (frameId !== null) cancelAnimationFrame(frameId);
     clearTimeout(finishTimer);
-    if (endTransition) backLayer.removeEventListener('transitionend', endTransition);
+    if (endTransition && turnSheet) turnSheet.removeEventListener('transitionend', endTransition);
+    if (turnScene && turnScene.parentNode) turnScene.parentNode.removeChild(turnScene);
     frameId = null;
     endTransition = null;
-    rem(bookStage, 'transitioning');
+    turnScene = null;
+    turnSheet = null;
+    rem(bookStage, 'turning');
     rem(bookStage, 'in-motion');
     rem(bookStage, 'forward');
     rem(bookStage, 'backward');
@@ -133,11 +139,43 @@
 
     function finish() {
       if (!isAnimating) return;
-      cancelTransition();
       current = next;
       frontImage.src = slides[current];
       frontImage.alt = 'Slide ' + (current + 1);
+      cancelTransition();
       updateHUD();
+    }
+
+    function buildPageTurn() {
+      var imgRect = frontImage.getBoundingClientRect();
+      var stageRect = bookStage.getBoundingClientRect();
+      turnScene = document.createElement('div');
+      turnScene.className = 'turn-scene';
+      turnScene.setAttribute('aria-hidden', 'true');
+      turnScene.style.left = (imgRect.left - stageRect.left) + 'px';
+      turnScene.style.top = (imgRect.top - stageRect.top) + 'px';
+      turnScene.style.width = imgRect.width + 'px';
+      turnScene.style.height = imgRect.height + 'px';
+
+      var shadow = document.createElement('div');
+      shadow.className = 'turn-shadow';
+      turnScene.appendChild(shadow);
+
+      turnSheet = document.createElement('div');
+      turnSheet.className = 'turn-sheet';
+      var front = document.createElement('div');
+      front.className = 'turn-face turn-front';
+      var back = document.createElement('div');
+      back.className = 'turn-face turn-back';
+      var paperImage = frontImage.cloneNode(false);
+      paperImage.removeAttribute('id');
+      paperImage.alt = '';
+      front.appendChild(paperImage);
+      back.appendChild(paperImage.cloneNode(false));
+      turnSheet.appendChild(front);
+      turnSheet.appendChild(back);
+      turnScene.appendChild(turnSheet);
+      frontLayer.appendChild(turnScene);
     }
 
     function startTransition() {
@@ -146,15 +184,32 @@
         pendingImage.removeEventListener('error', pendingError);
         pendingImage = null;
       }
+      if (!frontImage.complete) {
+        pendingImage = frontImage;
+        pendingLoad = startTransition;
+        pendingError = function () {
+          cancelTransition();
+          console.error('Could not load slide ' + (current + 1));
+        };
+        frontImage.addEventListener('load', pendingLoad);
+        frontImage.addEventListener('error', pendingError);
+        return;
+      }
+      if (!frontImage.naturalWidth) {
+        cancelTransition();
+        console.error('Could not load slide ' + (current + 1));
+        return;
+      }
       backImage.src = slides[next];
       backImage.alt = 'Slide ' + (next + 1);
-      add(bookStage, 'transitioning');
+      buildPageTurn();
+      add(bookStage, 'turning');
       add(bookStage, dir > 0 ? 'forward' : 'backward');
       endTransition = function (e) {
-        if (e.target === backLayer && e.propertyName === 'opacity') finish();
+        if (e.target === turnSheet && e.propertyName === 'transform') finish();
       };
-      backLayer.addEventListener('transitionend', endTransition);
-      // Let the incoming slide's starting position paint before moving both layers.
+      turnSheet.addEventListener('transitionend', endTransition);
+      // Paint the flat page before rotating it away from the destination slide.
       frameId = requestAnimationFrame(function () {
         frameId = requestAnimationFrame(function () {
           frameId = null;

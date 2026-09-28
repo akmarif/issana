@@ -3,8 +3,8 @@
   --accent: #3b82f6;
   --text: #eaeaea;
   --panel-bg: #0f0f0f;
-  --slide-duration: 480ms;
-  --slide-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --turn-duration: 820ms;
+  --turn-ease: cubic-bezier(0.55, 0.05, 0.25, 1);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --bar-h: 60px;
 }
@@ -63,47 +63,11 @@ html, body {
   transform: translate3d(0, 0, 0);
 }
 
-/* Keep the destination hidden until its image has loaded and the transition begins. */
+/* Keep the destination hidden until the page above it is ready to turn. */
 #backLayer { z-index: 1; opacity: 0; }
 #frontLayer { z-index: 2; }
-
-.book-stage.transitioning .book-layer {
-  will-change: opacity, transform;
-}
-.book-stage.in-motion .book-layer {
-  -webkit-transition: opacity var(--slide-duration) var(--slide-ease), -webkit-transform var(--slide-duration) var(--slide-ease);
-  transition: opacity var(--slide-duration) var(--slide-ease), transform var(--slide-duration) var(--slide-ease);
-}
-
-.book-stage.transitioning.forward #backLayer {
-  -webkit-transform: translate3d(24px, 0, 0) scale(0.985);
-  transform: translate3d(24px, 0, 0) scale(0.985);
-}
-.book-stage.transitioning.backward #backLayer {
-  -webkit-transform: translate3d(-24px, 0, 0) scale(0.985);
-  transform: translate3d(-24px, 0, 0) scale(0.985);
-}
-.book-stage.transitioning.in-motion #backLayer {
-  opacity: 1;
-  -webkit-transform: translate3d(0, 0, 0) scale(1);
-  transform: translate3d(0, 0, 0) scale(1);
-}
-.book-stage.in-motion #frontLayer { opacity: 0; }
-.book-stage.in-motion.forward #frontLayer {
-  -webkit-transform: translate3d(-24px, 0, 0) scale(0.985);
-  transform: translate3d(-24px, 0, 0) scale(0.985);
-}
-.book-stage.in-motion.backward #frontLayer {
-  -webkit-transform: translate3d(24px, 0, 0) scale(0.985);
-  transform: translate3d(24px, 0, 0) scale(0.985);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .book-stage.in-motion .book-layer {
-    -webkit-transition-duration: 0.01ms;
-    transition-duration: 0.01ms;
-  }
-}
+.book-stage.turning #backLayer { opacity: 1; }
+.book-stage.turning #frontImage { visibility: hidden; }
 
 /* Slide images */
 .book-layer img {
@@ -124,6 +88,122 @@ html, body {
   user-select: none;
   /* Prevent drag ghost on desktop */
   -webkit-drag: none;
+}
+
+/* One full-size sheet hinges off the slide, exposing the loaded page below. */
+.turn-scene {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  -webkit-perspective: 1600px;
+  perspective: 1600px;
+}
+.turn-sheet {
+  position: absolute;
+  width: 100%; height: 100%;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  will-change: transform;
+  -webkit-box-shadow: 0 12px 36px rgba(0,0,0,0.26);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.26);
+}
+.book-stage.forward .turn-sheet {
+  -webkit-transform-origin: left center;
+  transform-origin: left center;
+}
+.book-stage.backward .turn-sheet {
+  -webkit-transform-origin: right center;
+  transform-origin: right center;
+}
+.book-stage.in-motion .turn-sheet {
+  -webkit-transition: -webkit-transform var(--turn-duration) var(--turn-ease);
+  transition: transform var(--turn-duration) var(--turn-ease);
+}
+.book-stage.in-motion.forward .turn-sheet {
+  -webkit-transform: rotateY(-180deg);
+  transform: rotateY(-180deg);
+}
+.book-stage.in-motion.backward .turn-sheet {
+  -webkit-transform: rotateY(180deg);
+  transform: rotateY(180deg);
+}
+.turn-face {
+  position: absolute;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.turn-front {
+  -webkit-transform: translateZ(1px);
+  transform: translateZ(1px);
+}
+.turn-back {
+  background: #f4f2ee;
+  -webkit-transform: rotateY(180deg) translateZ(1px);
+  transform: rotateY(180deg) translateZ(1px);
+}
+.turn-face img {
+  display: block;
+  max-width: none; max-height: none;
+  width: 100%; height: 100%;
+  -o-object-fit: fill;
+  object-fit: fill;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+.turn-back img { opacity: 0.1; }
+.turn-face::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+}
+.turn-front::after {
+  background: linear-gradient(to left, rgba(0,0,0,0.32), transparent 75%);
+  opacity: 0;
+}
+.book-stage.backward .turn-front::after {
+  background: linear-gradient(to right, rgba(0,0,0,0.32), transparent 75%);
+}
+.turn-back::after {
+  background: linear-gradient(to left, rgba(0,0,0,0.22), transparent 65%);
+}
+.book-stage.backward .turn-back::after {
+  background: linear-gradient(to right, rgba(0,0,0,0.22), transparent 65%);
+}
+.turn-shadow {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(to right, rgba(0,0,0,0.5), transparent 65%);
+  opacity: 0;
+}
+.book-stage.backward .turn-shadow {
+  background: linear-gradient(to left, rgba(0,0,0,0.5), transparent 65%);
+}
+.book-stage.in-motion .turn-shadow,
+.book-stage.in-motion .turn-front::after {
+  -webkit-animation: pageShade var(--turn-duration) ease-in-out both;
+  animation: pageShade var(--turn-duration) ease-in-out both;
+}
+@-webkit-keyframes pageShade {
+  0%, 100% { opacity: 0; }
+  45% { opacity: 0.85; }
+}
+@keyframes pageShade {
+  0%, 100% { opacity: 0; }
+  45% { opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-stage.in-motion .turn-sheet {
+    -webkit-transition-duration: 0.01ms;
+    transition-duration: 0.01ms;
+  }
+  .book-stage.in-motion .turn-shadow,
+  .book-stage.in-motion .turn-front::after {
+    -webkit-animation: none;
+    animation: none;
+  }
 }
 
 /* ─── Nav Arrows ─────────────────────────────────────────── */
